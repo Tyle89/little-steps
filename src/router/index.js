@@ -30,6 +30,11 @@ const router = createRouter({
       component: () => import('@/views/onboarding/AddFirstChildView.vue')
     },
     {
+      path: '/child',
+      name: 'Child',
+     component: () => import('@/views/child/ChildProfileView.vue')
+    },
+    {
       path: '/mood',
       name: 'MoodJournal',
       component: () => import('@/views/parents/MoodJournalView.vue')
