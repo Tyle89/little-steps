@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 
 export const useChildStore = defineStore('child', {
   state: () => ({
-    prenom: 'Axel',
+    prenom: '',
     genre: 'Garçon',
     dateNaissance: '2022-05-15',
     poids: 16,

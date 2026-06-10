@@ -34,7 +34,7 @@
           <option value="">Choisir...</option>
           <option value="Garçon">Garçon</option>
           <option value="Fille">Fille</option>
-          <option value="Non défini">Je préfère ne pas préciser</option>
+          <option value="Non défini">Radiateur ascendant Dauphin</option>
         </select>
       </div>
 
