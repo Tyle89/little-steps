@@ -5,48 +5,58 @@
     <div class="content">
       <h1 class="title">Comment tu te sens aujourd'hui ?</h1>
 
+      <!-- Emojis -->
       <div class="emoji-selector">
-        <span
-          v-for="emoji in emojis"
-          :key="emoji"
+        <span 
+          v-for="emoji in emojis" 
+          :key="emoji" 
           class="emoji"
           :class="{ selected: selectedEmoji === emoji }"
           @click="selectEmoji(emoji)"
-          >
-          {{  emoji  }}
+        >
+          {{ emoji }}
         </span>
       </div>
 
+      <!-- Tags rapides -->
       <div class="tags">
-        <span
-          v-for="tag in quickTags"
-          :key="tag"
+        <span 
+          v-for="tag in quickTags" 
+          :key="tag" 
           class="tag"
           :class="{ active: selectedTags.includes(tag) }"
           @click="toggleTag(tag)"
         >
-          {{  tag  }}
+          {{ tag }}
         </span>
       </div>
 
-      <textarea
-        v-model="note"
+      <!-- Note -->
+      <textarea 
+        v-model="note" 
         class="note-input"
-        placeholder="Écris quelques mots qui pourraient représenter ton mood..."
+        placeholder="Écris quelques mots sur ton état d'esprit..."
         rows="4"
       ></textarea>
 
-      <button class="btn-analyze" @click="analyzeMood" :disabled="!selectedEmoji && !note">
+      <!-- Bouton Analyse -->
+      <button 
+        class="btn-analyze" 
+        @click="analyzeMood"
+        :disabled="!selectedEmoji && note.trim() === ''"
+      >
         Analyser mon mood
       </button>
 
+      <!-- Résultat -->
       <div v-if="analysis" class="analysis-result">
-        <p><strong>Résultat :</strong> {{  analysis.sentiment }}</p>
-        <p class="score">Score : {{  analysis.score.toFixed(2) }}</p>
+        <h3>Résultat de l'analyse</h3>
+        <p class="sentiment">{{ analysis.sentiment }}</p>
+        <p class="score">Score : {{ analysis.score.toFixed(2) }}</p>
       </div>
     </div>
   </div>
-</template> 
+</template>
 
 <script setup>
 import { ref } from 'vue'
@@ -73,12 +83,13 @@ const toggleTag = (tag) => {
   }
 }
 
-const analyseMood = () => {
-  const result = {
-    sentiment: selectedEmoji.value == '😊' || selectedEmoji.value === '🙂' ? 'Positif' : 'Négatif / Neutre',
-    score: Math.random() * 0.6 + 0.4
+const analyzeMood = () => {
+  const isPositive = selectedEmoji.value === '😊' || selectedEmoji.value === '🙂'
+  
+  analysis.value = {
+    sentiment: isPositive ? 'Positif 🌟' : 'Négatif / Neutre',
+    score: isPositive ? (Math.random() * 0.4 + 0.6) : (Math.random() * 0.5 + 0.2)
   }
-  analysis.value = result
 }
 </script>
 
@@ -105,23 +116,24 @@ const analyseMood = () => {
 .emoji-selector {
   display: flex;
   justify-content: center;
-  gap: 15px;
-  font-size: 3.2rem;
+  gap: 18px;
+  font-size: 3.5rem;
   margin-bottom: 30px;
 }
 
 .emoji {
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: all 0.2s;
+  padding: 8px;
 }
 
 .emoji:hover {
-  transform: scale(1.3);
+  transform: scale(1.25);
 }
 
 .emoji.selected {
-  transform: scale(1.4);
-  filter: drop-shadow(0 0 8px #9ED8B6);
+  transform: scale(1.35);
+  filter: drop-shadow(0 0 10px #9ED8B6);
 }
 
 .tags {
@@ -133,12 +145,13 @@ const analyseMood = () => {
 }
 
 .tag {
-  padding: 8px 16px;
+  padding: 8px 18px;
   background: white;
   border: 2px solid #E5D9C8;
   border-radius: 30px;
   cursor: pointer;
   transition: all 0.2s;
+  font-size: 0.95rem;
 }
 
 .tag.active {
@@ -149,7 +162,7 @@ const analyseMood = () => {
 
 .note-input {
   width: 100%;
-  min-height: 120px;
+  min-height: 130px;
   padding: 15px;
   border: 2px solid #E5D9C8;
   border-radius: 16px;
@@ -176,5 +189,15 @@ const analyseMood = () => {
   background: #f0f8f0;
   border-radius: 16px;
   text-align: center;
+}
+
+.sentiment {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #5C4033;
+}
+
+.score {
+  color: #666;
 }
 </style>

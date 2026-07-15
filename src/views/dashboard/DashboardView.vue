@@ -34,8 +34,8 @@
         <button class="btn-primary" @click="goToMood">Actualiser mon humeur</button>
       </div>
 
-      <!-- Carte 3 : Petite Croissance -->
-      <div class="card">
+      <!-- Carte 3 : Petite Croissance (cliquable) -->
+      <div class="card growth-card" @click="goToStats" style="cursor: pointer;">
         <h3>Petite Croissance</h3>
         <div class="growth-stats">
           <div class="stat">
@@ -47,6 +47,7 @@
             <span class="value">{{ child.taille }} cm</span>
           </div>
         </div>
+        <p class="see-more">Voir les statistiques détaillées →</p>
       </div>
     </main>
   </div>
@@ -72,9 +73,8 @@ const child = computed(() => ({
   ageDisplay: childData.ageDisplay.value,
 }))
 
-const goToMood = () => {
-  router.push('/mood')
-}
+const goToMood = () => router.push('/mood')
+const goToStats = () => router.push('/stats')   // ← Ajout ici
 </script>
 
 <style scoped>
@@ -188,4 +188,21 @@ h3 {
 
 .btn-primary { background-color: #9ED8B6; color: white; }
 .btn-secondary { background-color: #F4A46C; color: white; }
+
+.growth-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.growth-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+}
+
+.see-more {
+  text-align: center;
+  color: #9ED8B6;
+  font-weight: 500;
+  margin-top: 15px;
+  font-size: 0.95rem;
+}
 </style>
