@@ -16,7 +16,7 @@ import { computed } from 'vue'
 const route = useRoute()
 
 const showBottomNav = computed(() => {
-  const authRoutes = ['Login', 'Register', 'AddFirstChild']
+  const authRoutes = ['Welcome', 'Register', 'AddFirstChild']
   return !authRoutes.includes(route.name)
 })
 </script>

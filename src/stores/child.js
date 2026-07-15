@@ -8,7 +8,8 @@ export const useChildStore = defineStore('child', {
     poids: null,
     taille: null,
     photo: null,
-    derniersMilestones: []
+    derniersMilestones: [],
+    mesures: []
   }),
 
   getters: {
@@ -26,6 +27,16 @@ export const useChildStore = defineStore('child', {
     updateChild(data) {
       this.$patch(data)
       this.saveToLocalStorage()
+    },
+
+    addMesure(mesure) {
+      this.mesures.push(mesure)
+      this.saveToLocalStorage()
+    },
+
+    addMilestone(milestone) {
+      this.derniersMilestones.unshift(milestone)
+       this.saveToLocalStorage()
     },
 
     loadFromLocalStorage() {

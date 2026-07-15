@@ -21,7 +21,7 @@ import { Icon } from '@iconify/vue'
 const route = useRoute()
 
 const navItems = [
-  { path: '/', icon: 'mdi:home-outline', label: 'Accueil' },
+  { path: '/dashboard', icon: 'mdi:home-outline', label: 'Accueil' },
   { path: '/child', icon: 'mdi:baby-face', label: 'Enfant' },
   { path: '/mood', icon: 'mdi:heart-outline', label: 'Parents' },
   { path: '/stats', icon: 'mdi:chart-bar', label: 'Stats' }

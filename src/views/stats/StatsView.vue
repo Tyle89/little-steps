@@ -3,7 +3,7 @@
     <AppHeader />
 
     <div class="content">
-      <h1 class="title">Statistiques de {{ child.prenom || 'votre enfant' }}</h1>
+      <h1 class="title">Statistiques de {{ prenom || 'votre enfant' }}</h1>
 
       <!-- Graphique -->
       <div class="card">
