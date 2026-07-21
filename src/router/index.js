@@ -32,7 +32,7 @@ const router = createRouter({
     {
       path: '/child',
       name: 'Child',
-     component: () => import('@/views/child/ChildProfileView.vue')
+      component: () => import('@/views/child/ChildProfileView.vue')
     },
     {
       path: '/mood',
@@ -43,6 +43,16 @@ const router = createRouter({
       path: '/stats',
       name: 'Stats',
       component: () => import('@/views/stats/StatsView.vue')
+    },
+    {
+      path: '/checklist',
+      name: 'Checklist',
+      component: () => import('@/views/checklist/ChecklistView.vue')
+    },
+    {
+      path: '/privacy',
+      name: 'Privacy',
+      component: () => import('@/views/legal/PrivacyView.vue')
     }
   ]
 })

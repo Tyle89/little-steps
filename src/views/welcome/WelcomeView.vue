@@ -2,8 +2,10 @@
   <div class="welcome-page">
 
     <div class="content">
+      <img :src="illustration" alt="" class="illustration" />
+
       <h1 class="title">Suivez chaque petit pas<br>de votre enfant</h1>
-      
+
       <p class="subtitle">
         Un compagnon doux et intuitif pour accompagner<br>
         les premiers mois jusqu'à la préadolescence.
@@ -17,22 +19,18 @@
           J'ai déjà un compte
         </button>
       </div>
-
-      <p class="demo-link" @click="goToDashboard">
-        Essayer en mode démo →
-      </p>
     </div>
   </div>
 </template>
 
 <script setup>
 import { useRouter } from 'vue-router'
+import illustration from '@/assets/welcome-illustration.svg'
 
 const router = useRouter()
 
 const goToRegister = () => router.push('/register')
 const goToLogin = () => router.push('/login')
-const goToDashboard = () => router.push('/')
 </script>
 
 <style scoped>
@@ -48,6 +46,12 @@ const goToDashboard = () => router.push('/')
 
 .content {
   max-width: 420px;
+}
+
+.illustration {
+  width: 220px;
+  height: auto;
+  margin-bottom: 20px;
 }
 
 .title {
@@ -68,7 +72,6 @@ const goToDashboard = () => router.push('/')
   display: flex;
   flex-direction: column;
   gap: 14px;
-  margin-bottom: 40px;
 }
 
 .btn-primary, .btn-secondary {
@@ -90,12 +93,5 @@ const goToDashboard = () => router.push('/')
   background-color: transparent;
   color: #5C4033;
   border: 2px solid #E5D9C8;
-}
-
-.demo-link {
-  color: #9ED8B6;
-  font-weight: 500;
-  cursor: pointer;
-  text-decoration: underline;
 }
 </style>

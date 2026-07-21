@@ -1,56 +1,43 @@
 <template>
   <div class="login-page">
-    <AppHeader />
-
     <div class="content">
       <h1 class="title">Content de te revoir !</h1>
       <p class="subtitle">Connectez-vous pour continuer à suivre votre enfant</p>
 
-      <form @submit.prevent="login" class="form">
+      <form @submit.prevent="handleLogin" class="form">
         <div class="form-group">
           <label>Adresse email</label>
-          <input 
-            v-model="form.email" 
-            type="email" 
-            placeholder="exemple@email.com" 
-            required 
+          <input
+            v-model="form.email"
+            type="email"
+            placeholder="exemple@email.com"
+            required
           />
         </div>
 
         <div class="form-group">
           <label>Mot de passe</label>
-          <input 
-            v-model="form.password" 
-            type="password" 
-            placeholder="••••••••" 
-            required 
+          <input
+            v-model="form.password"
+            type="password"
+            placeholder="••••••••"
+            required
           />
         </div>
+
+        <p v-if="authStore.error" class="error-message">{{ authStore.error }}</p>
 
         <button type="submit" class="btn-primary" :disabled="loading">
           {{ loading ? "Connexion en cours..." : "Se connecter" }}
         </button>
       </form>
 
-      <div class="divider">
-        <span>ou</span>
-      </div>
-
-      <button class="btn-google">
-        <img 
-          src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" 
-          alt="Google" 
-          class="google-logo"
-        >
-        Continuer avec Google
-      </button>
-
       <p class="forgot-password" @click="forgotPassword">
         Mot de passe oublié ?
       </p>
 
       <p class="register-link">
-        Pas encore de compte ? 
+        Pas encore de compte ?
         <span @click="goToRegister" class="link">Créer un compte</span>
       </p>
     </div>
@@ -59,10 +46,11 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
-import AppHeader from '@/components/layout/AppHeader.vue'
+import { useAuthStore } from '@/stores/auth'
 import { ref } from 'vue'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const loading = ref(false)
 
 const form = ref({
@@ -70,14 +58,14 @@ const form = ref({
   password: ''
 })
 
-const login = () => {
+const handleLogin = async () => {
   loading.value = true
+  const success = await authStore.login(form.value.email, form.value.password)
+  loading.value = false
 
-  setTimeout(() => {
-    alert("Connexion réussie ! 🎉")
+  if (success) {
     router.push('/dashboard')
-    loading.value = false
-  }, 1000)
+  }
 }
 
 const forgotPassword = () => {
@@ -132,6 +120,15 @@ input {
   font-size: 1rem;
 }
 
+.error-message {
+  background: #fdecea;
+  color: #c0392b;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+
 .btn-primary {
   width: 100%;
   padding: 16px;
@@ -145,36 +142,9 @@ input {
   cursor: pointer;
 }
 
-.btn-google {
-  width: 100%;
-  padding: 16px;
-  background-color: white;
-  color: #333;
-  border: 2px solid #E5D9C8;
-  border-radius: 30px;
-  font-size: 1.05rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  cursor: pointer;
-}
-
-.google-logo {
-  width: 22px;
-  height: 22px;
-}
-
-.divider {
-  text-align: center;
-  margin: 25px 0;
-  color: #999;
-  position: relative;
-}
-
-.divider span {
-  background: #FFF8E8;
-  padding: 0 15px;
+.btn-primary:disabled {
+  background-color: #cfe8db;
+  cursor: not-allowed;
 }
 
 .forgot-password {

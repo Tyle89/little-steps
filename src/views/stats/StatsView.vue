@@ -1,7 +1,5 @@
 <template>
   <div class="stats-page">
-    <AppHeader />
-
     <div class="content">
       <h1 class="title">Statistiques de {{ prenom || 'votre enfant' }}</h1>
 
@@ -48,7 +46,6 @@
 </template>
 
 <script setup>
-import AppHeader from '@/components/layout/AppHeader.vue'
 import { useChildStore } from '@/stores/child'
 import { storeToRefs } from 'pinia'
 import { ref, onMounted, watch } from 'vue'

@@ -5,7 +5,7 @@
     <header class="header">
       <div class="child-header">
         <img
-          :src="child.photo || 'https://via.placeholder.com/110x110/9ED8B6/ffffff?text=Photo'"
+          :src="child.photo || childPlaceholder"
           alt="Enfant"
           class="child-avatar"
         />
@@ -21,16 +21,19 @@
       <div class="card">
         <h3>Derniers jalons</h3>
         <p v-if="child.derniersMilestones?.length" class="milestone">
-          {{ child.derniersMilestones[0].date }} : {{ child.derniersMilestones[0].description }}
+          {{ formatDate(child.derniersMilestones[0].date) }} : {{ child.derniersMilestones[0].description }}
         </p>
-        <button class="btn-secondary">Quoi de neuf ?</button>
+        <p v-else class="milestone empty">Aucun jalon enregistré pour l'instant.</p>
+        <button class="btn-secondary" @click="goToChild">Quoi de neuf ?</button>
       </div>
 
       <!-- Carte 2 : Humeur des parents -->
       <div class="card">
         <h3>Humeur des parents</h3>
-        <div class="emoji-big">😊</div>
-        <p class="mood-question">Comment te sens-tu aujourd'hui ?</p>
+        <div class="emoji-big">{{ lastMoodEmoji }}</div>
+        <p class="mood-question">
+          {{ lastMoodEntry ? `Dernière humeur : ${formatDate(lastMoodEntry.date)}` : 'Comment te sens-tu aujourd\'hui ?' }}
+        </p>
         <button class="btn-primary" @click="goToMood">Actualiser mon humeur</button>
       </div>
 
@@ -40,11 +43,11 @@
         <div class="growth-stats">
           <div class="stat">
             <span class="label">Poids</span>
-            <span class="value">{{ child.poids }} kg</span>
+            <span class="value">{{ child.poids ? `${child.poids} kg` : 'Non renseigné' }}</span>
           </div>
           <div class="stat">
             <span class="label">Taille</span>
-            <span class="value">{{ child.taille }} cm</span>
+            <span class="value">{{ child.taille ? `${child.taille} cm` : 'Non renseigné' }}</span>
           </div>
         </div>
         <p class="see-more">Voir les statistiques détaillées →</p>
@@ -55,14 +58,18 @@
 
 <script setup>
 import { useChildStore } from '@/stores/child'
+import { useMoodStore } from '@/stores/mood'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
+import childPlaceholder from '@/assets/child-placeholder.svg'
 
 const router = useRouter()
 const childStore = useChildStore()
+const moodStore = useMoodStore()
 
 const childData = storeToRefs(childStore)
+const { entries: moodEntries } = storeToRefs(moodStore)
 
 const child = computed(() => ({
   prenom: childData.prenom.value,
@@ -73,8 +80,20 @@ const child = computed(() => ({
   ageDisplay: childData.ageDisplay.value,
 }))
 
+const lastMoodEntry = computed(() => moodEntries.value[0] ?? null)
+const lastMoodEmoji = computed(() => lastMoodEntry.value?.emoji ?? '😐')
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'short'
+  })
+}
+
 const goToMood = () => router.push('/mood')
-const goToStats = () => router.push('/stats')   // ← Ajout ici
+const goToStats = () => router.push('/stats')
+const goToChild = () => router.push('/child')
 </script>
 
 <style scoped>
@@ -122,8 +141,8 @@ const goToStats = () => router.push('/stats')   // ← Ajout ici
   display: flex;
   flex-direction: column;
   gap: 24px;
-  max-width: 1100px;     /* Largeur maximale */
-  margin: 0 auto;        /* Centre le contenu */
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
 .card {
@@ -137,6 +156,11 @@ h3 {
   margin: 0 0 16px 0;
   color: #5C4033;
   font-size: 1.5rem;
+}
+
+.milestone.empty {
+  color: #999;
+  font-style: italic;
 }
 
 .emoji-big {

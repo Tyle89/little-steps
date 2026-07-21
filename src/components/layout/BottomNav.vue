@@ -24,6 +24,7 @@ const navItems = [
   { path: '/dashboard', icon: 'mdi:home-outline', label: 'Accueil' },
   { path: '/child', icon: 'mdi:baby-face', label: 'Enfant' },
   { path: '/mood', icon: 'mdi:heart-outline', label: 'Parents' },
+  { path: '/checklist', icon: 'mdi:clipboard-check-outline', label: 'Jalons' },
   { path: '/stats', icon: 'mdi:chart-bar', label: 'Stats' }
 ]
 

@@ -76,21 +76,41 @@
         </ul>
         <p v-else class="empty">Aucun jalon enregistré pour l'instant.</p>
       </div>
+
+      <!-- Zone sensible -->
+      <div class="card danger-card">
+        <h3>⚠️ Zone sensible</h3>
+        <p class="danger-text">
+          Supprimer ton compte efface définitivement ton profil, celui de ton enfant,
+          ton journal d'humeur et tes jalons. Cette action est irréversible.
+        </p>
+        <p v-if="deleteError" class="error-message">{{ deleteError }}</p>
+        <button class="btn-danger" @click="handleDeleteAccount" :disabled="deleting">
+          {{ deleting ? "Suppression..." : "Supprimer mon compte et mes données" }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { useChildStore } from '@/stores/child'
+import { useAuthStore } from '@/stores/auth'
 import { storeToRefs } from 'pinia'
-import { ref, ref as vueRef } from 'vue'
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const childStore = useChildStore()
+const authStore = useAuthStore()
 const { prenom, genre, dateNaissance, photo, ageDisplay, derniersMilestones } = storeToRefs(childStore)
 
 const editMode = ref(false)
 const fileInput = ref(null)
 const previewUrl = ref(photo.value)
+
+const deleting = ref(false)
+const deleteError = ref('')
 
 const form = ref({
   prenom: '',
@@ -154,6 +174,26 @@ const addMilestone = () => {
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleDateString('fr-FR')
+}
+
+const handleDeleteAccount = async () => {
+  const confirmed = confirm(
+    "Es-tu vraiment sûr(e) ? Cette action supprimera définitivement ton compte et toutes tes données. Impossible de revenir en arrière."
+  )
+  if (!confirmed) return
+
+  deleting.value = true
+  deleteError.value = ''
+
+  const result = await authStore.deleteAccount()
+
+  deleting.value = false
+
+  if (result.success) {
+    router.push('/')
+  } else {
+    deleteError.value = result.message
+  }
 }
 </script>
 
@@ -308,5 +348,41 @@ input, select {
 .empty {
   color: #999;
   font-style: italic;
+}
+
+.danger-card {
+  border: 2px solid #f5c6c0;
+}
+
+.danger-text {
+  color: #8C6F5E;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.error-message {
+  background: #fdecea;
+  color: #c0392b;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+
+.btn-danger {
+  width: 100%;
+  padding: 14px;
+  background: white;
+  color: #c0392b;
+  border: 2px solid #c0392b;
+  border-radius: 30px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

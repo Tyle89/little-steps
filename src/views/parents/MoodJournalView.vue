@@ -1,75 +1,110 @@
 <template>
   <div class="mood-page">
-    <AppHeader />
-
     <div class="content">
       <h1 class="title">Comment tu te sens aujourd'hui ?</h1>
 
-      <!-- Emojis -->
-      <div class="emoji-selector">
-        <span 
-          v-for="emoji in emojis" 
-          :key="emoji" 
-          class="emoji"
-          :class="{ selected: selectedEmoji === emoji }"
-          @click="selectEmoji(emoji)"
+      <div class="card">
+        <!-- Emojis -->
+        <div class="emoji-selector">
+          <span
+            v-for="emoji in emojis"
+            :key="emoji"
+            class="emoji"
+            :class="{ selected: selectedEmoji === emoji }"
+            @click="selectEmoji(emoji)"
+          >
+            {{ emoji }}
+          </span>
+        </div>
+
+        <!-- Tags rapides -->
+        <div class="tags">
+          <span
+            v-for="tag in quickTags"
+            :key="tag"
+            class="tag"
+            :class="{ active: selectedTags.includes(tag) }"
+            @click="toggleTag(tag)"
+          >
+            {{ tag }}
+          </span>
+        </div>
+
+        <!-- Note -->
+        <textarea
+          v-model="note"
+          class="note-input"
+          placeholder="Écris quelques mots sur ton état d'esprit..."
+          rows="4"
+        ></textarea>
+
+        <button
+          class="btn-analyze"
+          @click="submitEntry"
+          :disabled="!selectedEmoji"
         >
-          {{ emoji }}
-        </span>
+          Enregistrer mon mood
+        </button>
+
+        <!-- Résultat du dernier ajout -->
+        <div v-if="lastEntry" class="analysis-result">
+          <p class="sentiment">{{ lastEntry.sentiment }}</p>
+          <p class="score">Score estimé : {{ lastEntry.score.toFixed(2) }}</p>
+          <p class="disclaimer">Estimation basique en attendant l'analyse Hugging Face 🤗</p>
+        </div>
       </div>
 
-      <!-- Tags rapides -->
-      <div class="tags">
-        <span 
-          v-for="tag in quickTags" 
-          :key="tag" 
-          class="tag"
-          :class="{ active: selectedTags.includes(tag) }"
-          @click="toggleTag(tag)"
-        >
-          {{ tag }}
-        </span>
-      </div>
+      <!-- Historique -->
+      <div class="card">
+        <h3>📖 Historique</h3>
 
-      <!-- Note -->
-      <textarea 
-        v-model="note" 
-        class="note-input"
-        placeholder="Écris quelques mots sur ton état d'esprit..."
-        rows="4"
-      ></textarea>
-
-      <!-- Bouton Analyse -->
-      <button 
-        class="btn-analyze" 
-        @click="analyzeMood"
-        :disabled="!selectedEmoji && note.trim() === ''"
-      >
-        Analyser mon mood
-      </button>
-
-      <!-- Résultat -->
-      <div v-if="analysis" class="analysis-result">
-        <h3>Résultat de l'analyse</h3>
-        <p class="sentiment">{{ analysis.sentiment }}</p>
-        <p class="score">Score : {{ analysis.score.toFixed(2) }}</p>
+        <ul v-if="entries.length" class="entry-list">
+          <li v-for="entry in entries" :key="entry.id" class="entry-item">
+            <div class="entry-header">
+              <span class="entry-emoji">{{ entry.emoji }}</span>
+              <span class="entry-date">{{ formatDate(entry.date) }}</span>
+              <button class="btn-delete" @click="removeEntry(entry.id)" title="Supprimer">✕</button>
+            </div>
+            <p v-if="entry.note" class="entry-note">{{ entry.note }}</p>
+            <div v-if="entry.tags.length" class="entry-tags">
+              <span v-for="tag in entry.tags" :key="tag" class="mini-tag">{{ tag }}</span>
+            </div>
+            <p class="entry-sentiment">{{ entry.sentiment }} · {{ entry.score.toFixed(2) }}</p>
+          </li>
+        </ul>
+        <p v-else class="empty">Aucune entrée pour l'instant. Ton premier mood du jour ci-dessus ?</p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import AppHeader from '@/components/layout/AppHeader.vue'
+import { ref, computed } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useMoodStore } from '@/stores/mood'
+
+const moodStore = useMoodStore()
+const { entries } = storeToRefs(moodStore)
 
 const selectedEmoji = ref('')
 const selectedTags = ref([])
 const note = ref('')
-const analysis = ref(null)
+const lastEntry = ref(null)
 
 const emojis = ['😊', '🙂', '😐', '😕', '😔', '😡']
-
 const quickTags = ['Fatigue', 'Joie', 'Stress', 'Fierté', 'Colère', 'Calme', 'Anxiété', 'Motivé']
+
+const positiveTags = ['Joie', 'Calme', 'Motivé', 'Fierté']
+const negativeTags = ['Fatigue', 'Stress', 'Colère', 'Anxiété']
+
+const baseScores = {
+  '😊': 0.9,
+  '🙂': 0.7,
+  '😐': 0.5,
+  '😕': 0.35,
+  '😔': 0.2,
+  '😡': 0.15
+}
 
 const selectEmoji = (emoji) => {
   selectedEmoji.value = emoji
@@ -77,19 +112,64 @@ const selectEmoji = (emoji) => {
 
 const toggleTag = (tag) => {
   if (selectedTags.value.includes(tag)) {
-    selectedTags.value = selectedTags.value.filter(t => t !== tag)
+    selectedTags.value = selectedTags.value.filter((t) => t !== tag)
   } else {
     selectedTags.value.push(tag)
   }
 }
 
-const analyzeMood = () => {
-  const isPositive = selectedEmoji.value === '😊' || selectedEmoji.value === '🙂'
-  
-  analysis.value = {
-    sentiment: isPositive ? 'Positif 🌟' : 'Négatif / Neutre',
-    score: isPositive ? (Math.random() * 0.4 + 0.6) : (Math.random() * 0.5 + 0.2)
+const computeScore = (emoji, tags) => {
+  let score = baseScores[emoji] ?? 0.5
+
+  tags.forEach((tag) => {
+    if (positiveTags.includes(tag)) score += 0.05
+    if (negativeTags.includes(tag)) score -= 0.05
+  })
+
+  return Math.min(1, Math.max(0, score))
+}
+
+const sentimentLabel = (score) => {
+  if (score >= 0.6) return 'Positif 🌟'
+  if (score >= 0.4) return 'Neutre 😐'
+  return 'Journée difficile 💙'
+}
+
+const submitEntry = () => {
+  if (!selectedEmoji.value) return
+
+  const score = computeScore(selectedEmoji.value, selectedTags.value)
+
+  const entry = {
+    id: Date.now(),
+    date: new Date().toISOString(),
+    emoji: selectedEmoji.value,
+    tags: [...selectedTags.value],
+    note: note.value.trim(),
+    sentiment: sentimentLabel(score),
+    score
   }
+
+  moodStore.addEntry(entry)
+  lastEntry.value = entry
+
+  selectedEmoji.value = ''
+  selectedTags.value = []
+  note.value = ''
+}
+
+const removeEntry = (id) => {
+  moodStore.deleteEntry(id)
+  if (lastEntry.value?.id === id) lastEntry.value = null
+}
+
+const formatDate = (dateStr) => {
+  return new Date(dateStr).toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 </script>
 
@@ -97,34 +177,47 @@ const analyzeMood = () => {
 .mood-page {
   min-height: 100vh;
   background-color: #FFF8E8;
-  padding-top: 20px;
+  padding: 20px;
 }
 
 .content {
   max-width: 500px;
   margin: 0 auto;
-  padding: 20px;
 }
 
 .title {
   text-align: center;
   font-size: 1.9rem;
   color: #5C4033;
-  margin-bottom: 30px;
+  margin-bottom: 24px;
+}
+
+.card {
+  background: white;
+  border-radius: 24px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
 }
 
 .emoji-selector {
   display: flex;
   justify-content: center;
-  gap: 18px;
-  font-size: 3.5rem;
-  margin-bottom: 30px;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 24px;
 }
 
 .emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  font-size: 2.5rem;
+  line-height: 1;
   cursor: pointer;
   transition: all 0.2s;
-  padding: 8px;
 }
 
 .emoji:hover {
@@ -141,7 +234,7 @@ const analyzeMood = () => {
   flex-wrap: wrap;
   gap: 10px;
   justify-content: center;
-  margin-bottom: 30px;
+  margin-bottom: 24px;
 }
 
 .tag {
@@ -162,13 +255,15 @@ const analyzeMood = () => {
 
 .note-input {
   width: 100%;
-  min-height: 130px;
+  box-sizing: border-box;
+  min-height: 110px;
   padding: 15px;
   border: 2px solid #E5D9C8;
   border-radius: 16px;
   font-size: 1rem;
-  resize: vertical;
-  margin-bottom: 25px;
+  resize: none;
+  margin-bottom: 20px;
+  font-family: inherit;
 }
 
 .btn-analyze {
@@ -183,21 +278,119 @@ const analyzeMood = () => {
   cursor: pointer;
 }
 
+.btn-analyze:disabled {
+  background: #cfe8db;
+  cursor: not-allowed;
+}
+
 .analysis-result {
-  margin-top: 25px;
-  padding: 20px;
+  margin-top: 20px;
+  padding: 16px;
   background: #f0f8f0;
   border-radius: 16px;
   text-align: center;
 }
 
 .sentiment {
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   font-weight: 600;
   color: #5C4033;
+  margin: 0 0 4px;
 }
 
 .score {
   color: #666;
+  margin: 0 0 6px;
+}
+
+.disclaimer {
+  font-size: 0.8rem;
+  color: #999;
+  font-style: italic;
+  margin: 0;
+}
+
+h3 {
+  color: #5C4033;
+  margin-top: 0;
+}
+
+.entry-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.entry-item {
+  padding: 14px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.entry-item:last-child {
+  border-bottom: none;
+}
+
+.entry-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.entry-emoji {
+  font-size: 1.5rem;
+}
+
+.entry-date {
+  color: #8C6F5E;
+  font-size: 0.85rem;
+  flex: 1;
+}
+
+.btn-delete {
+  background: none;
+  border: none;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 4px;
+}
+
+.btn-delete:hover {
+  color: #F4A46C;
+}
+
+.entry-note {
+  color: #5C4033;
+  margin: 8px 0;
+  font-size: 0.95rem;
+}
+
+.entry-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.mini-tag {
+  background: #FFF8E8;
+  border: 1px solid #E5D9C8;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  color: #8C6F5E;
+}
+
+.entry-sentiment {
+  font-size: 0.85rem;
+  color: #9ED8B6;
+  font-weight: 600;
+  margin: 0;
+}
+
+.empty {
+  color: #999;
+  font-style: italic;
+  margin: 0;
 }
 </style>

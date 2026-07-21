@@ -13,17 +13,17 @@
 <script setup>
 import { Icon } from '@iconify/vue'
 import { useRouter } from 'vue-router'
-import { useChildStore } from '@/stores/child'
+import { useAuthStore } from '@/stores/auth'
 import { computed } from 'vue'
 
 const router = useRouter()
-const childStore = useChildStore()
+const authStore = useAuthStore()
+const isLoggedIn = computed(() => authStore.isAuthenticated)
 
-const isLoggedIn = computed(() => !!childStore.prenom && childStore.prenom !== '')
-
-const logout = () => {
+const logout = async () => {
   if (confirm('Voulez-vous vraiment vous déconnecter ?')) {
-    router.push('/welcome')
+    await authStore.logout()
+     router.push('/')
   }
 }
 </script>
@@ -40,6 +40,7 @@ const logout = () => {
   top: 0;
   z-index: 100;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
 }
 
 .header-content {
@@ -53,7 +54,7 @@ const logout = () => {
 }
 
 .logo {
-  height: 200px;
+  height: 140px;
   width: auto;
   max-width: 100%;
   object-fit: contain;

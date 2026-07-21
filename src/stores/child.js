@@ -1,15 +1,20 @@
 import { defineStore } from 'pinia'
+import { db } from '@/firebase'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { useAuthStore } from '@/stores/auth'
 
 export const useChildStore = defineStore('child', {
   state: () => ({
-    prenom: "",
-    genre: "",
-    dateNaissance: "",
+    prenom: '',
+    genre: '',
+    dateNaissance: '',
     poids: null,
     taille: null,
     photo: null,
     derniersMilestones: [],
-    mesures: []
+    mesures: [],
+    checklist: {},
+    loaded: false
   }),
 
   getters: {
@@ -24,30 +29,53 @@ export const useChildStore = defineStore('child', {
   },
 
   actions: {
-    updateChild(data) {
+    async updateChild(data) {
       this.$patch(data)
-      this.saveToLocalStorage()
+      await this.saveToFirestore()
     },
 
-    addMesure(mesure) {
+    async addMesure(mesure) {
       this.mesures.push(mesure)
-      this.saveToLocalStorage()
+      await this.saveToFirestore()
     },
 
-    addMilestone(milestone) {
+    async addMilestone(milestone) {
       this.derniersMilestones.unshift(milestone)
-       this.saveToLocalStorage()
+      await this.saveToFirestore()
     },
 
-    loadFromLocalStorage() {
-      const saved = localStorage.getItem('littleStepsChild')
-      if (saved) {
-        this.$patch(JSON.parse(saved))
+    async toggleChecklistItem(bracketId, category, index) {
+      if (!this.checklist[bracketId]) this.checklist[bracketId] = {}
+      if (!this.checklist[bracketId][category]) this.checklist[bracketId][category] = []
+
+      this.checklist[bracketId][category][index] = !this.checklist[bracketId][category][index]
+      await this.saveToFirestore()
+   },
+
+    resetChild() {
+      this.$reset()
+    },
+
+    async loadFromFirestore() {
+      const authStore = useAuthStore()
+      if (!authStore.user) return
+
+      const ref = doc(db, 'children', authStore.user.uid)
+      const snap = await getDoc(ref)
+
+      if (snap.exists()) {
+        this.$patch(snap.data())
       }
+      this.loaded = true
     },
 
-    saveToLocalStorage() {
-      localStorage.setItem('littleStepsChild', JSON.stringify(this.$state))
+    async saveToFirestore() {
+      const authStore = useAuthStore()
+      if (!authStore.user) return
+
+      const ref = doc(db, 'children', authStore.user.uid)
+      const { loaded, ...data } = this.$state
+      await setDoc(ref, data, { merge: true })
     }
   }
 })

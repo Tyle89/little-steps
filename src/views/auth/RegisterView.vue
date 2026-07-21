@@ -1,16 +1,15 @@
 <template>
   <div class="register-page">
-
     <div class="content">
       <h1 class="title">Créer un compte</h1>
       <p class="subtitle">Rejoignez-nous pour suivre l'évolution de votre enfant</p>
 
-      <form @submit.prevent="register" class="form">
+      <form @submit.prevent="handleRegister" class="form">
         <div class="form-group">
           <label>Prénom</label>
           <input v-model="form.prenom" type="text" placeholder="Votre prénom" required />
         </div>
-      
+
         <div class="form-group">
           <label>Adresse email</label>
           <input v-model="form.email" type="email" placeholder="exemple@email.com" required />
@@ -26,26 +25,20 @@
           <input v-model="form.confirmPassword" type="password" placeholder="••••••••" required />
         </div>
 
+        <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+
         <button type="submit" class="btn-primary" :disabled="loading">
           {{ loading ? "Création en cours..." : "Créer mon compte" }}
         </button>
       </form>
 
-      <div class="divider">
-        <span>ou</span>
-      </div>
-
-      <button class="btn-google">
-        <img 
-         src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" 
-         alt="Google" 
-          class="google-logo"
-        >
-         S'inscrire avec Google
-        </button>
+      <p class="privacy-note">
+         En créant un compte, tu acceptes notre
+         <RouterLink to="/privacy" class="link">politique de confidentialité</RouterLink>.
+       </p>
 
       <p class="login-link">
-        Déjà un compte ? 
+        Déjà un compte ?
         <span @click="goToLogin" class="link">Se connecter</span>
       </p>
     </div>
@@ -53,12 +46,14 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
-import AppHeader from '@/components/layout/AppHeader.vue'
-import { ref } from 'vue'
+import { useRouter, RouterLink } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { ref, computed } from 'vue'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const loading = ref(false)
+const localError = ref(null)
 
 const form = ref({
   prenom: '',
@@ -67,19 +62,23 @@ const form = ref({
   confirmPassword: ''
 })
 
-const register = () => {
+const errorMessage = computed(() => localError.value || authStore.error)
+
+const handleRegister = async () => {
+  localError.value = null
+
   if (form.value.password !== form.value.confirmPassword) {
-    alert("Les mots de passe ne correspondent pas")
+    localError.value = "Les mots de passe ne correspondent pas."
     return
   }
 
   loading.value = true
+  const success = await authStore.register(form.value.email, form.value.password, form.value.prenom)
+  loading.value = false
 
-  setTimeout(() => {
-    alert("Compte créé avec succès ! 🎉")
+  if (success) {
     router.push('/add-child')
-    loading.value = false
-  }, 1200)
+  }
 }
 
 const goToLogin = () => router.push('/login')
@@ -130,6 +129,15 @@ input {
   font-size: 1rem;
 }
 
+.error-message {
+  background: #fdecea;
+  color: #c0392b;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+
 .btn-primary {
   width: 100%;
   padding: 16px;
@@ -143,49 +151,22 @@ input {
   cursor: pointer;
 }
 
-.btn-google {
-  width: 100%;
-  padding: 14px 20px;
-  background-color: white;
-  color: #3c4043;
-  border: 1px solid #dadce0;
-  border-radius: 30px;
-  font-size: 1.05rem;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.btn-google:hover {
-  background-color: #f8f9fa;
-  border-color: #c6c6c6;
-}
-
-.google-logo {
-  width: 22px;
-  height: 22px;
-}
-
-.divider {
-  text-align: center;
-  margin: 25px 0;
-  color: #999;
-  position: relative;
-}
-
-.divider span {
-  background: #FFF8E8;
-  padding: 0 15px;
+.btn-primary:disabled {
+  background-color: #cfe8db;
+  cursor: not-allowed;
 }
 
 .login-link {
   text-align: center;
   margin-top: 30px;
   color: #8C6F5E;
+}
+
+.privacy-note {
+ text-align: center;
+ font-size: 0.8rem;
+ color: #8C6F5E;
+ margin-top: 16px;
 }
 
 .link {

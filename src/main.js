@@ -1,7 +1,8 @@
-import { createApp } from 'vue'
+import { createApp, watch } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
+import { useAuthStore } from '@/stores/auth'
 import { useChildStore } from '@/stores/child'
 import { useMoodStore } from '@/stores/mood'
 
@@ -13,8 +14,22 @@ app.use(pinia)
 
 app.mount('#app')
 
-// Charge les données sauvegardées
+const authStore = useAuthStore()
 const childStore = useChildStore()
-childStore.loadFromLocalStorage()
 const moodStore = useMoodStore()
-moodStore.loadFromLocalStorage()
+
+authStore.listenToAuthChanges()
+
+// Dès qu'on connaît l'utilisateur (connecté ou non), on synchronise les données
+watch(
+  () => authStore.user,
+  async (user) => {
+    if (user) {
+      await childStore.loadFromFirestore()
+      await moodStore.loadFromFirestore()
+    } else {
+      childStore.resetChild()
+      moodStore.resetMood()
+    }
+  }
+)

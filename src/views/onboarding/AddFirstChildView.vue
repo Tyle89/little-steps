@@ -3,7 +3,6 @@
     <h1>Ajoutons ton premier enfant 🌱</h1>
 
     <!-- Photo -->
-    <!-- Photo Section - Version améliorée -->
     <div class="photo-section">
       <div class="photo-preview" @click="triggerFileInput">
         <img v-if="previewUrl" :src="previewUrl" alt="Photo de l'enfant" class="preview-img" />
@@ -34,7 +33,7 @@
           <option value="">Choisir...</option>
           <option value="Garçon">Garçon</option>
           <option value="Fille">Fille</option>
-          <option value="Non défini">Radiateur ascendant Dauphin</option>
+          <option value="Non défini">Non défini</option>
         </select>
       </div>
 
@@ -54,22 +53,37 @@
         </div>
       </div>
 
-      <button type="submit" class="btn-primary">Enregistrer l'enfant</button>
+      <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+
+      <button type="submit" class="btn-primary" :disabled="saving">
+        {{ saving ? "Enregistrement..." : "Enregistrer l'enfant" }}
+      </button>
     </form>
 
     <button @click="goToDashboard" class="btn-secondary">Retour au Dashboard</button>
+
+    <!-- Toast de confirmation -->
+    <transition name="fade">
+      <div v-if="successMessage" class="toast">
+        ✅ Enfant enregistré avec succès !
+      </div>
+    </transition>
   </div>
 </template>
 
 <script setup>
 import { useChildStore } from '@/stores/child'
 import { useRouter } from 'vue-router'
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 
 const router = useRouter()
 const childStore = useChildStore()
 const fileInput = ref(null)
 const previewUrl = ref(childStore.photo || null)
+
+const saving = ref(false)
+const successMessage = ref(false)
+const errorMessage = ref('')
 
 const form = ref({
   prenom: childStore.prenom || '',
@@ -96,23 +110,32 @@ const handlePhotoUpload = (e) => {
   reader.readAsDataURL(file)
 }
 
-const saveChild = () => {
-  if (form.value.photo) {
-    console.log('📸 Photo sauvegardée, longueur:', form.value.photo.length)
+const saveChild = async () => {
+  saving.value = true
+  errorMessage.value = ''
+
+  try {
+    await childStore.updateChild({
+      prenom: form.value.prenom,
+      genre: form.value.genre,
+      dateNaissance: form.value.dateNaissance,
+      poids: form.value.poids,
+      taille: form.value.taille,
+      photo: form.value.photo,
+    })
+
+    successMessage.value = true
+    setTimeout(() => {
+      router.push('/dashboard')
+    }, 1200)
+  } catch (err) {
+    errorMessage.value = "Une erreur est survenue lors de l'enregistrement. Réessaie."
+  } finally {
+    saving.value = false
   }
-
-  childStore.updateChild({
-    prenom: form.value.prenom,
-    genre: form.value.genre,
-    dateNaissance: form.value.dateNaissance,
-    poids: form.value.poids,
-    taille: form.value.taille,
-    photo: form.value.photo, // ← Important
-  })
-
-  alert('Enfant enregistré avec succès ! 🎉')
-  router.push('/dashboard')
 }
+
+const goToDashboard = () => router.push('/dashboard')
 </script>
 
 <style scoped>
@@ -120,6 +143,7 @@ const saveChild = () => {
   padding: 30px 20px;
   max-width: 500px;
   margin: 0 auto;
+  position: relative;
 }
 
 .photo-section {
@@ -187,6 +211,15 @@ select {
   font-size: 1rem;
 }
 
+.error-message {
+  background: #fdecea;
+  color: #c0392b;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+
 .btn-primary,
 .btn-secondary {
   width: 100%;
@@ -202,9 +235,38 @@ select {
   border: none;
 }
 
+.btn-primary:disabled {
+  background: #cfe8db;
+  cursor: not-allowed;
+}
+
 .btn-secondary {
   background: transparent;
   color: #8c6f5e;
   border: 2px solid #e5d9c8;
+}
+
+.toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #9ed8b6;
+  color: white;
+  padding: 14px 24px;
+  border-radius: 30px;
+  font-weight: 600;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  z-index: 200;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

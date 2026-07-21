@@ -16,7 +16,7 @@ import { computed } from 'vue'
 const route = useRoute()
 
 const showBottomNav = computed(() => {
-  const authRoutes = ['Welcome', 'Register', 'AddFirstChild']
+  const authRoutes = ['Welcome', 'Login', 'Register', 'AddFirstChild', 'Privacy']
   return !authRoutes.includes(route.name)
 })
 </script>
@@ -25,5 +25,12 @@ const showBottomNav = computed(() => {
 .app {
   min-height: 100vh;
   background-color: rgb(209, 209, 199);
+  font-family: 'Comfortaa', sans-serif;
+}
+</style>
+
+<style>
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 </style>
