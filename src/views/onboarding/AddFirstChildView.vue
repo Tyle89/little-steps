@@ -24,7 +24,7 @@
     <form @submit.prevent="saveChild">
       <div class="form-group">
         <label>Prénom de l'enfant</label>
-        <input v-model="form.prenom" type="text" placeholder="Axel" required />
+        <input v-model="form.prenom" type="text" placeholder="" required />
       </div>
 
       <div class="form-group">

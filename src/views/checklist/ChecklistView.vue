@@ -45,23 +45,35 @@
                 v-for="(item, index) in bracket.categories[catKey]"
                 :key="index"
                 class="item"
-                @click="toggle(bracket.id, catKey, index)"
+                @click="toggleItem(bracket.id, catKey, index)"
               >
                 <span
                   class="checkbox"
-                  :class="{ checked: isChecked(bracket.id, catKey, index) }"
+                  :class="{
+                    validated: isValidated(bracket.id, catKey, index),
+                    pending: isPending(bracket.id, catKey, index)
+                  }"
                 >
-                  <span v-if="isChecked(bracket.id, catKey, index)">✓</span>
+                  <span v-if="isValidated(bracket.id, catKey, index)">🔒</span>
+                  <span v-else-if="isPending(bracket.id, catKey, index)">✓</span>
                 </span>
                 <span
                   class="item-text"
-                  :class="{ checked: isChecked(bracket.id, catKey, index) }"
+                  :class="{ validated: isValidated(bracket.id, catKey, index) }"
                 >
                   {{ item }}
                 </span>
               </li>
             </ul>
           </div>
+
+          <button
+            class="btn-validate"
+            :disabled="!hasPendingChanges(bracket)"
+            @click="validateBracket(bracket)"
+          >
+            ✅ Valider cette tranche
+          </button>
         </div>
       </div>
     </div>
@@ -108,12 +120,53 @@ const toggleBracket = (id) => {
   }
 }
 
-const isChecked = (bracketId, category, index) => {
+// Sélections locales, pas encore enregistrées dans le store
+const pending = ref({})
+
+const isValidated = (bracketId, category, index) => {
   return !!checklist.value?.[bracketId]?.[category]?.[index]
 }
 
-const toggle = (bracketId, category, index) => {
-  childStore.toggleChecklistItem(bracketId, category, index)
+const isPending = (bracketId, category, index) => {
+  return !!pending.value?.[bracketId]?.[category]?.[index]
+}
+
+const toggleItem = (bracketId, category, index) => {
+  if (isValidated(bracketId, category, index)) {
+    const confirmed = confirm(
+      "Cette étape est déjà validée. Veux-tu vraiment annuler cette validation ?"
+    )
+    if (confirmed) {
+      childStore.toggleChecklistItem(bracketId, category, index)
+    }
+    return
+  }
+
+  if (!pending.value[bracketId]) pending.value[bracketId] = {}
+  if (!pending.value[bracketId][category]) pending.value[bracketId][category] = []
+
+  pending.value[bracketId][category][index] = !pending.value[bracketId][category][index]
+}
+
+const hasPendingChanges = (bracket) => {
+  const p = pending.value[bracket.id]
+  if (!p) return false
+  return Object.values(p).some((arr) => arr?.some((v) => v === true))
+}
+
+const validateBracket = (bracket) => {
+  const p = pending.value[bracket.id]
+  if (!p) return
+
+  Object.keys(p).forEach((category) => {
+    p[category].forEach((val, index) => {
+      if (val === true && !isValidated(bracket.id, category, index)) {
+        childStore.toggleChecklistItem(bracket.id, category, index)
+      }
+    })
+  })
+
+  pending.value[bracket.id] = {}
 }
 
 const progressFor = (bracket) => {
@@ -123,7 +176,7 @@ const progressFor = (bracket) => {
   let done = 0
   Object.keys(bracket.categories).forEach((cat) => {
     bracket.categories[cat].forEach((_, index) => {
-      if (isChecked(bracket.id, cat, index)) done++
+      if (isValidated(bracket.id, cat, index)) done++
     })
   })
 
@@ -266,22 +319,28 @@ const progressFor = (bracket) => {
 }
 
 .checkbox {
-  flex: 0 0 20px;
-  width: 20px;
-  height: 20px;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
   border: 2px solid #E5D9C8;
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: white;
   margin-top: 2px;
 }
 
-.checkbox.checked {
+.checkbox.pending {
+  background: #F4A46C;
+  border-color: #F4A46C;
+}
+
+.checkbox.validated {
   background: #9ED8B6;
   border-color: #9ED8B6;
+  font-size: 0.85rem;
 }
 
 .item-text {
@@ -290,8 +349,26 @@ const progressFor = (bracket) => {
   line-height: 1.4;
 }
 
-.item-text.checked {
+.item-text.validated {
   color: #aaa;
   text-decoration: line-through;
+}
+
+.btn-validate {
+  width: 100%;
+  padding: 14px;
+  background: #9ED8B6;
+  color: white;
+  border: none;
+  border-radius: 30px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 6px;
+}
+
+.btn-validate:disabled {
+  background: #e5e5e5;
+  color: #999;
+  cursor: not-allowed;
 }
 </style>
