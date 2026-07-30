@@ -43,13 +43,14 @@
         <div class="growth-stats">
           <div class="stat">
             <span class="label">Poids</span>
-            <span class="value">{{ child.poids ? `${child.poids} kg` : 'Non renseigné' }}</span>
+            <span class="value">{{ derniereMesure?.poids ? `${derniereMesure.poids} kg` : 'Non renseigné' }}</span>
           </div>
           <div class="stat">
             <span class="label">Taille</span>
-            <span class="value">{{ child.taille ? `${child.taille} cm` : 'Non renseigné' }}</span>
+            <span class="value">{{ derniereMesure?.taille ? `${derniereMesure.taille} cm` : 'Non renseigné' }}</span>
           </div>
         </div>
+        <p v-if="derniereMesure" class="mesure-date">Mesuré le {{ formatDate(derniereMesure.date) }}</p>
         <p class="see-more">Voir les statistiques détaillées →</p>
       </div>
     </main>
@@ -73,12 +74,19 @@ const { entries: moodEntries } = storeToRefs(moodStore)
 
 const child = computed(() => ({
   prenom: childData.prenom.value,
-  poids: childData.poids.value,
-  taille: childData.taille.value,
   derniersMilestones: childData.derniersMilestones.value,
   photo: childData.photo.value,
   ageDisplay: childData.ageDisplay.value,
 }))
+
+// La dernière mesure enregistrée (celle avec la date la plus récente),
+// qu'elle vienne du formulaire d'inscription ou de la page Stats.
+const derniereMesure = computed(() => {
+  const mesures = childData.mesures.value || []
+  if (!mesures.length) return null
+
+  return [...mesures].sort((a, b) => new Date(b.date) - new Date(a.date))[0]
+})
 
 const lastMoodEntry = computed(() => moodEntries.value[0] ?? null)
 const lastMoodEmoji = computed(() => lastMoodEntry.value?.emoji ?? '😐')
@@ -196,6 +204,13 @@ h3 {
   font-size: 2.1rem;
   font-weight: bold;
   color: #5C4033;
+}
+
+.mesure-date {
+  text-align: center;
+  color: #8C6F5E;
+  font-size: 0.8rem;
+  margin-top: 12px;
 }
 
 .btn-primary,

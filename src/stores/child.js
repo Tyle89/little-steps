@@ -3,6 +3,27 @@ import { db } from '@/firebase'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { useAuthStore } from '@/stores/auth'
 
+// Nettoie récursivement la checklist : quelle que soit la forme existante
+// (tableau à trous, objet, valeurs undefined...), ne garde que des objets
+// plats avec uniquement des entrées `true`. Firestore refuse `undefined`
+// n'importe où dans un document, donc ce nettoyage doit tourner avant
+// CHAQUE écriture, sans exception.
+const sanitizeChecklist = (checklist) => {
+  const result = {}
+  Object.keys(checklist || {}).forEach((bracketId) => {
+    result[bracketId] = {}
+    Object.keys(checklist[bracketId] || {}).forEach((category) => {
+      const catData = checklist[bracketId][category] || {}
+      const cleaned = {}
+      Object.keys(catData).forEach((idx) => {
+        if (catData[idx]) cleaned[idx] = true
+      })
+      result[bracketId][category] = cleaned
+    })
+  })
+  return result
+}
+
 export const useChildStore = defineStore('child', {
   state: () => ({
     prenom: '',
@@ -46,18 +67,28 @@ export const useChildStore = defineStore('child', {
 
     async toggleChecklistItem(bracketId, category, index) {
       if (!this.checklist[bracketId]) this.checklist[bracketId] = {}
-      if (!this.checklist[bracketId][category]) this.checklist[bracketId][category] = []
+      if (!this.checklist[bracketId][category]) this.checklist[bracketId][category] = {}
 
-      this.checklist[bracketId][category][index] = !this.checklist[bracketId][category][index]
+      const current = !!this.checklist[bracketId][category][index]
+      if (current) {
+        delete this.checklist[bracketId][category][index]
+      } else {
+        this.checklist[bracketId][category][index] = true
+      }
+
       await this.saveToFirestore()
-   },
+    },
 
-   setChecklistItemLocal(bracketId, category, index, value) {
-     if (!this.checklist[bracketId]) this.checklist[bracketId] = {}
-     if (!this.checklist[bracketId][category]) this.checklist[bracketId][category] = []
+    setChecklistItemLocal(bracketId, category, index, value) {
+      if (!this.checklist[bracketId]) this.checklist[bracketId] = {}
+      if (!this.checklist[bracketId][category]) this.checklist[bracketId][category] = {}
 
-     this.checklist[bracketId][category][index] = value
-   },
+      if (value) {
+        this.checklist[bracketId][category][index] = true
+      } else {
+        delete this.checklist[bracketId][category][index]
+      }
+    },
 
     resetChild() {
       this.$reset()
@@ -72,6 +103,7 @@ export const useChildStore = defineStore('child', {
 
       if (snap.exists()) {
         this.$patch(snap.data())
+        this.checklist = sanitizeChecklist(this.checklist)
       }
       this.loaded = true
     },
@@ -82,6 +114,7 @@ export const useChildStore = defineStore('child', {
 
       const ref = doc(db, 'children', authStore.user.uid)
       const { loaded, ...data } = this.$state
+      data.checklist = sanitizeChecklist(data.checklist)
       await setDoc(ref, data, { merge: true })
     }
   }

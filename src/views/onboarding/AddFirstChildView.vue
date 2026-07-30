@@ -24,7 +24,7 @@
     <form @submit.prevent="saveChild">
       <div class="form-group">
         <label>Prénom de l'enfant</label>
-        <input v-model="form.prenom" type="text" placeholder="" required />
+        <input v-model="form.prenom" type="text" placeholder="Axel" required />
       </div>
 
       <div class="form-group">
@@ -42,14 +42,27 @@
         <input v-model="form.dateNaissance" type="date" required />
       </div>
 
+      <div class="section-label">À la naissance <span class="optional">(facultatif)</span></div>
       <div class="form-row">
         <div class="form-group half">
           <label>Poids (kg)</label>
-          <input v-model.number="form.poids" type="number" step="0.1" />
+          <input v-model.number="form.poidsNaissance" type="number" step="0.01" placeholder="3.3" />
         </div>
         <div class="form-group half">
           <label>Taille (cm)</label>
-          <input v-model.number="form.taille" type="number" />
+          <input v-model.number="form.tailleNaissance" type="number" step="0.1" placeholder="50" />
+        </div>
+      </div>
+
+      <div class="section-label">Aujourd'hui <span class="optional">(facultatif)</span></div>
+      <div class="form-row">
+        <div class="form-group half">
+          <label>Poids (kg)</label>
+          <input v-model.number="form.poidsActuel" type="number" step="0.1" />
+        </div>
+        <div class="form-group half">
+          <label>Taille (cm)</label>
+          <input v-model.number="form.tailleActuel" type="number" step="0.1" />
         </div>
       </div>
 
@@ -89,9 +102,11 @@ const form = ref({
   prenom: childStore.prenom || '',
   genre: childStore.genre || '',
   dateNaissance: childStore.dateNaissance || '',
-  poids: childStore.poids || null,
-  taille: childStore.taille || null,
   photo: childStore.photo,
+  poidsNaissance: null,
+  tailleNaissance: null,
+  poidsActuel: null,
+  tailleActuel: null
 })
 
 const triggerFileInput = () => {
@@ -105,7 +120,7 @@ const handlePhotoUpload = (e) => {
   const reader = new FileReader()
   reader.onload = (event) => {
     previewUrl.value = event.target.result
-    form.value.photo = event.target.result // base64
+    form.value.photo = event.target.result
   }
   reader.readAsDataURL(file)
 }
@@ -119,10 +134,27 @@ const saveChild = async () => {
       prenom: form.value.prenom,
       genre: form.value.genre,
       dateNaissance: form.value.dateNaissance,
-      poids: form.value.poids,
-      taille: form.value.taille,
-      photo: form.value.photo,
+      photo: form.value.photo
     })
+
+    // Deux appels distincts et bien attendus l'un après l'autre (pas en
+    // parallèle), pour éviter que deux écritures Firestore concurrentes
+    // ne s'écrasent mutuellement.
+    if (form.value.poidsNaissance || form.value.tailleNaissance) {
+      await childStore.addMesure({
+        date: form.value.dateNaissance,
+        poids: form.value.poidsNaissance || null,
+        taille: form.value.tailleNaissance || null
+      })
+    }
+
+    if (form.value.poidsActuel || form.value.tailleActuel) {
+      await childStore.addMesure({
+        date: new Date().toISOString().split('T')[0],
+        poids: form.value.poidsActuel || null,
+        taille: form.value.tailleActuel || null
+      })
+    }
 
     successMessage.value = true
     setTimeout(() => {
@@ -182,6 +214,19 @@ const goToDashboard = () => router.push('/dashboard')
   margin-bottom: 8px;
 }
 
+.section-label {
+  font-weight: 600;
+  color: #5c4033;
+  margin: 20px 0 10px;
+  font-size: 0.95rem;
+}
+
+.optional {
+  font-weight: 400;
+  color: #999;
+  font-size: 0.8rem;
+}
+
 .form-group {
   margin-bottom: 20px;
 }
@@ -205,6 +250,7 @@ label {
 input,
 select {
   width: 100%;
+  box-sizing: border-box;
   padding: 12px;
   border: 2px solid #e5d9c8;
   border-radius: 12px;

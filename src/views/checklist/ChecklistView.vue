@@ -143,7 +143,7 @@ const toggleItem = (bracketId, category, index) => {
   }
 
   if (!pending.value[bracketId]) pending.value[bracketId] = {}
-  if (!pending.value[bracketId][category]) pending.value[bracketId][category] = []
+  if (!pending.value[bracketId][category]) pending.value[bracketId][category] = {}
 
   pending.value[bracketId][category][index] = !pending.value[bracketId][category][index]
 }
@@ -151,7 +151,7 @@ const toggleItem = (bracketId, category, index) => {
 const hasPendingChanges = (bracket) => {
   const p = pending.value[bracket.id]
   if (!p) return false
-  return Object.values(p).some((arr) => arr?.some((v) => v === true))
+  return Object.values(p).some((catObj) => Object.values(catObj || {}).some((v) => v === true))
 }
 
 const validateBracket = async (bracket) => {
@@ -159,10 +159,12 @@ const validateBracket = async (bracket) => {
   if (!p) return
 
   Object.keys(p).forEach((category) => {
-    p[category].forEach((val, index) => {
-      if (val === true && !isValidated(bracket.id, category, index)) {
-      childStore.setChecklistItemLocal(bracket.id, category, index, true)      }
-    })
+   Object.keys(p[category]).forEach((indexStr) => {
+    const index = Number(indexStr)
+     if (p[category][indexStr] === true && !isValidated(bracket.id, category, index)) {
+       childStore.setChecklistItemLocal(bracket.id, category, index, true)
+     }
+   })
   })
 
   await childStore.saveToFirestore()
