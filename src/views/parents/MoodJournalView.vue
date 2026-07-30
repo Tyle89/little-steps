@@ -3,6 +3,19 @@
     <div class="content">
       <h1 class="title">Comment tu te sens aujourd'hui ?</h1>
 
+      <RouterLink to="/support" class="support-link">
+        🤝 Besoin de parler à quelqu'un ?
+      </RouterLink>
+
+      <!-- Suggestion contextuelle -->
+      <div v-if="showSupportSuggestion" class="card suggestion-card">
+        <p>
+          On a remarqué que ces derniers jours semblent difficiles. Tu n'es pas seul(e) —
+          il existe des personnes formées pour t'écouter, si tu en ressens le besoin.
+        </p>
+        <RouterLink to="/support" class="btn-suggestion">Voir les ressources</RouterLink>
+      </div>
+
       <div class="card">
         <!-- Emojis -->
         <div class="emoji-selector">
@@ -106,6 +119,12 @@ const baseScores = {
   '😡': 0.15
 }
 
+// Suggestion douce si les 3 dernières entrées sont toutes marquées "difficiles"
+const showSupportSuggestion = computed(() => {
+  if (entries.value.length < 3) return false
+  return entries.value.slice(0, 3).every((e) => e.score < 0.4)
+})
+
 const selectEmoji = (emoji) => {
   selectedEmoji.value = emoji
 }
@@ -189,7 +208,38 @@ const formatDate = (dateStr) => {
   text-align: center;
   font-size: 1.9rem;
   color: #5C4033;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
+}
+
+.support-link {
+  display: block;
+  text-align: center;
+  color: #9ED8B6;
+  font-weight: 600;
+  text-decoration: none;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+}
+
+.suggestion-card {
+  background: #fff3e0;
+  text-align: center;
+}
+
+.suggestion-card p {
+  color: #8a5a00;
+  line-height: 1.5;
+  margin: 0 0 14px;
+}
+
+.btn-suggestion {
+  display: inline-block;
+  background: #F4A46C;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 30px;
+  font-weight: 600;
+  text-decoration: none;
 }
 
 .card {
@@ -203,8 +253,8 @@ const formatDate = (dateStr) => {
 .emoji-selector {
   display: flex;
   justify-content: center;
-  gap: 10px;
   align-items: center;
+  gap: 10px;
   margin-bottom: 24px;
 }
 
