@@ -52,6 +52,13 @@ export const useChildStore = defineStore('child', {
       await this.saveToFirestore()
    },
 
+   setChecklistItemLocal(bracketId, category, index, value) {
+     if (!this.checklist[bracketId]) this.checklist[bracketId] = {}
+     if (!this.checklist[bracketId][category]) this.checklist[bracketId][category] = []
+
+     this.checklist[bracketId][category][index] = value
+   },
+
     resetChild() {
       this.$reset()
     },

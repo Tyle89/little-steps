@@ -154,18 +154,18 @@ const hasPendingChanges = (bracket) => {
   return Object.values(p).some((arr) => arr?.some((v) => v === true))
 }
 
-const validateBracket = (bracket) => {
+const validateBracket = async (bracket) => {
   const p = pending.value[bracket.id]
   if (!p) return
 
   Object.keys(p).forEach((category) => {
     p[category].forEach((val, index) => {
       if (val === true && !isValidated(bracket.id, category, index)) {
-        childStore.toggleChecklistItem(bracket.id, category, index)
-      }
+      childStore.setChecklistItemLocal(bracket.id, category, index, true)      }
     })
   })
 
+  await childStore.saveToFirestore()
   pending.value[bracket.id] = {}
 }
 
