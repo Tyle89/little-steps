@@ -58,22 +58,45 @@
         <h3>🌟 Jalons</h3>
 
         <form @submit.prevent="addMilestone" class="milestone-form">
-          <input v-model="newMilestone.date" type="date" required />
+          <div class="milestone-form-row">
+            <input v-model="newMilestone.date" type="date" required />
+            <select v-model="newMilestone.category" required>
+              <option value="">Catégorie...</option>
+              <option value="motricite">🏃 Motricité</option>
+              <option value="langage">💬 Langage</option>
+              <option value="physique">✋ Physique</option>
+              <option value="social">❤️ Social</option>
+            </select>
+          </div>
           <input
             v-model="newMilestone.description"
             type="text"
             placeholder="Ex : premiers pas, premier mot..."
             required
           />
-          <button type="submit" class="btn-add">Ajouter</button>
+          <button type="submit" class="btn-add">Ajouter à la frise</button>
         </form>
 
-        <ul v-if="derniersMilestones?.length" class="milestone-list">
-          <li v-for="(milestone, index) in derniersMilestones" :key="index" class="milestone-item">
-            <span class="milestone-date">{{ formatDate(milestone.date) }}</span>
-            <span class="milestone-desc">{{ milestone.description }}</span>
-          </li>
-        </ul>
+        <!-- Timeline visuelle -->
+        <div v-if="derniersMilestones?.length" class="timeline">
+          <div class="timeline-line"></div>
+          <div
+            v-for="(milestone, index) in derniersMilestones"
+            :key="index"
+            class="timeline-item"
+          >
+            <div class="timeline-dot" :class="categoryClass(milestone.category)">
+              <span>{{ categoryIcon(milestone.category) }}</span>
+            </div>
+            <div class="timeline-date">{{ formatDate(milestone.date) }}</div>
+            <div class="timeline-card">
+              <span class="timeline-badge" :class="categoryClass(milestone.category)">
+                {{ categoryLabel(milestone.category) }}
+              </span>
+              <p class="timeline-desc">{{ milestone.description }}</p>
+            </div>
+          </div>
+        </div>
         <p v-else class="empty">Aucun jalon enregistré pour l'instant.</p>
       </div>
 
@@ -121,8 +144,20 @@ const form = ref({
 
 const newMilestone = ref({
   date: new Date().toISOString().split('T')[0],
-  description: ''
+  description: '',
+  category: ''
 })
+
+const categories = {
+  motricite: { label: 'Motricité', icon: '🏃', class: 'cat-motricite' },
+  langage: { label: 'Langage', icon: '💬', class: 'cat-langage' },
+  physique: { label: 'Physique', icon: '✋', class: 'cat-physique' },
+  social: { label: 'Social', icon: '❤️', class: 'cat-social' }
+}
+
+const categoryLabel = (key) => categories[key]?.label || 'Autre'
+const categoryIcon = (key) => categories[key]?.icon || '⭐'
+const categoryClass = (key) => categories[key]?.class || 'cat-default'
 
 const startEdit = () => {
   form.value = {
@@ -167,7 +202,8 @@ const addMilestone = () => {
 
   newMilestone.value = {
     date: new Date().toISOString().split('T')[0],
-    description: ''
+    description: '',
+    category: ''
   }
 }
 
@@ -284,6 +320,7 @@ const handleDeleteAccount = async () => {
 
 input, select {
   width: 100%;
+  box-sizing: border-box;
   padding: 12px;
   border: 2px solid #E5D9C8;
   border-radius: 12px;
@@ -308,47 +345,103 @@ input, select {
 .btn-secondary { background: transparent; color: #8C6F5E; border: 2px solid #E5D9C8; flex: 1; }
 
 .milestone-form {
+  text-align: left;
+  margin-bottom: 24px;
   display: flex;
+  flex-direction: column;
   gap: 10px;
-  margin-bottom: 20px;
 }
 
-.milestone-form input[type="date"] { flex: 0 0 150px; }
-.milestone-form input[type="text"] { flex: 1; }
+.milestone-form-row {
+  display: flex;
+  gap: 10px;
+}
+
+.milestone-form-row input[type="date"] { flex: 0 0 150px; }
+.milestone-form-row select { flex: 1; }
 
 .btn-add {
   background: #F4A46C;
   color: white;
-  flex: 0 0 auto;
-}
-
-.milestone-list {
-  list-style: none;
-  padding: 0;
-  text-align: left;
-}
-
-.milestone-item {
-  display: flex;
-  gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid #eee;
-}
-
-.milestone-date {
-  color: #9ED8B6;
-  font-weight: 600;
-  flex: 0 0 100px;
-}
-
-.milestone-desc {
-  color: #5C4033;
+  width: 100%;
 }
 
 .empty {
   color: #999;
   font-style: italic;
 }
+
+/* Timeline */
+.timeline {
+  position: relative;
+  padding-left: 44px;
+  text-align: left;
+}
+
+.timeline-line {
+  position: absolute;
+  left: 15px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background: #E5D9C8;
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.timeline-item:last-child {
+  margin-bottom: 0;
+}
+
+.timeline-dot {
+  position: absolute;
+  left: -44px;
+  top: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+}
+
+.timeline-date {
+  font-size: 0.8rem;
+  color: #8C6F5E;
+  margin-bottom: 4px;
+}
+
+.timeline-card {
+  background: #FFF8E8;
+  border: 1px solid #E5D9C8;
+  border-radius: 14px;
+  padding: 10px 16px;
+}
+
+.timeline-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-bottom: 6px;
+}
+
+.timeline-desc {
+  color: #5C4033;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.cat-motricite { background: #EAF3DE; color: #27500A; }
+.cat-langage { background: #FAECE7; color: #712B13; }
+.cat-physique { background: #E6F1FB; color: #0C447C; }
+.cat-social { background: #FBEAF0; color: #72243E; }
+.cat-default { background: #F1EFE8; color: #444441; }
 
 .danger-card {
   border: 2px solid #f5c6c0;
