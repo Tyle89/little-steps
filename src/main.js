@@ -24,12 +24,15 @@ authStore.listenToAuthChanges()
 watch(
   () => authStore.user,
   async (user) => {
+    // On vide TOUJOURS les données locales avant de charger celles du nouvel utilisateur,
+    // pour éviter qu'un ancien compte "fuite" dans une nouvelle session (ex: changement
+    // de compte sans déconnexion explicite entre les deux).
+    childStore.resetChild()
+    moodStore.resetMood()
+
     if (user) {
       await childStore.loadFromFirestore()
       await moodStore.loadFromFirestore()
-    } else {
-      childStore.resetChild()
-      moodStore.resetMood()
     }
   }
 )
