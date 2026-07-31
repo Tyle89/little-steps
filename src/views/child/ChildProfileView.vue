@@ -45,6 +45,7 @@
               <label>Date de naissance</label>
               <input v-model="form.dateNaissance" type="date" />
             </div>
+            <p v-if="saveError" class="error-message">{{ saveError }}</p>
             <div class="form-row-buttons">
               <button type="button" class="btn-secondary" @click="cancelEdit">Annuler</button>
               <button type="submit" class="btn-primary">Enregistrer</button>
@@ -120,8 +121,9 @@
 import { useChildStore } from '@/stores/child'
 import { useAuthStore } from '@/stores/auth'
 import { storeToRefs } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { compressImage } from '@/utils/imageCompress'
 
 const router = useRouter()
 const childStore = useChildStore()
@@ -130,7 +132,8 @@ const { prenom, genre, dateNaissance, photo, ageDisplay, derniersMilestones } = 
 
 const editMode = ref(false)
 const fileInput = ref(null)
-const previewUrl = ref(photo.value)
+const localPreview = ref(null)
+const previewUrl = computed(() => localPreview.value || photo.value)
 
 const deleting = ref(false)
 const deleteError = ref('')
@@ -171,28 +174,36 @@ const startEdit = () => {
 
 const cancelEdit = () => {
   editMode.value = false
-  previewUrl.value = photo.value
+  localPreview.value = null
 }
 
 const triggerFileInput = () => {
   fileInput.value?.click()
 }
 
-const handlePhotoUpload = (e) => {
+const saveError = ref('')
+
+const handlePhotoUpload = async (e) => {
   const file = e.target.files[0]
   if (!file) return
 
-  const reader = new FileReader()
-  reader.onload = (event) => {
-    previewUrl.value = event.target.result
-    form.value.photo = event.target.result
+  try {
+    const compressed = await compressImage(file)
+    form.value.photo = compressed
+    localPreview.value = compressed
+  } catch (err) {
+    saveError.value = "Impossible de traiter cette photo, réessaie avec une autre."
   }
-  reader.readAsDataURL(file)
 }
 
-const saveEdit = () => {
-  childStore.updateChild({ ...form.value })
-  editMode.value = false
+const saveEdit = async () => {
+  saveError.value = ''
+  try {
+    await childStore.updateChild({ ...form.value })
+    editMode.value = false
+  } catch (err) {
+    saveError.value = "L'enregistrement a échoué, réessaie."
+  }
 }
 
 const addMilestone = () => {

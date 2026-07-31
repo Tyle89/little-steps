@@ -88,6 +88,7 @@
 import { useChildStore } from '@/stores/child'
 import { useRouter } from 'vue-router'
 import { ref } from 'vue'
+import { compressImage } from '@/utils/imageCompress'
 
 const router = useRouter()
 const childStore = useChildStore()
@@ -113,16 +114,17 @@ const triggerFileInput = () => {
   fileInput.value?.click()
 }
 
-const handlePhotoUpload = (e) => {
+const handlePhotoUpload = async (e) => {
   const file = e.target.files[0]
   if (!file) return
 
-  const reader = new FileReader()
-  reader.onload = (event) => {
-    previewUrl.value = event.target.result
-    form.value.photo = event.target.result
+  try {
+    const compressed = await compressImage(file)
+    previewUrl.value = compressed
+    form.value.photo = compressed
+  } catch (err) {
+    errorMessage.value = "Impossible de traiter cette photo, réessaie avec une autre."
   }
-  reader.readAsDataURL(file)
 }
 
 const saveChild = async () => {
