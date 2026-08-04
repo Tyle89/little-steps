@@ -17,6 +17,43 @@
       </div>
 
       <div class="card">
+        <!-- Qui es-tu -->
+        <div class="author-field">
+          <label>Qui es-tu ?</label>
+          <div class="author-options">
+            <span
+              class="author-option"
+              :class="{ active: authorMode === 'maman' }"
+              @click="selectAuthorMode('maman')"
+            >
+              👩 Maman
+            </span>
+            <span
+              class="author-option"
+              :class="{ active: authorMode === 'papa' }"
+              @click="selectAuthorMode('papa')"
+            >
+              👨 Papa
+            </span>
+            <span
+              class="author-option"
+              :class="{ active: authorMode === 'autre' }"
+              @click="selectAuthorMode('autre')"
+            >
+              ✨ Autre
+            </span>
+          </div>
+          <input
+            v-if="authorMode === 'autre'"
+            v-model="customName"
+            type="text"
+            placeholder="Ton prénom"
+            class="author-custom-input"
+            @change="rememberAuthor"
+          />
+          <p class="author-hint">Utile si vous partagez le même compte à deux</p>
+        </div>
+
         <!-- Emojis -->
         <div class="emoji-selector">
           <span
@@ -75,7 +112,10 @@
           <li v-for="entry in entries" :key="entry.id" class="entry-item">
             <div class="entry-header">
               <span class="entry-emoji">{{ entry.emoji }}</span>
-              <span class="entry-date">{{ formatDate(entry.date) }}</span>
+              <span class="entry-date">
+                {{ formatDate(entry.date) }}
+                <span v-if="entry.auteur" class="entry-author">· {{ entry.auteur }}</span>
+              </span>
               <button class="btn-delete" @click="removeEntry(entry.id)" title="Supprimer">✕</button>
             </div>
             <p v-if="entry.note" class="entry-note">{{ entry.note }}</p>
@@ -99,6 +139,10 @@ import { useMoodStore } from '@/stores/mood'
 const moodStore = useMoodStore()
 const { entries } = storeToRefs(moodStore)
 
+const savedMode = localStorage.getItem('littleStepsMoodAuthorMode') || ''
+const authorMode = ref(savedMode)
+const customName = ref(localStorage.getItem('littleStepsMoodAuthorCustom') || '')
+
 const selectedEmoji = ref('')
 const selectedTags = ref([])
 const note = ref('')
@@ -119,11 +163,28 @@ const baseScores = {
   '😡': 0.15
 }
 
+const authorLabel = computed(() => {
+  if (authorMode.value === 'maman') return 'Maman'
+  if (authorMode.value === 'papa') return 'Papa'
+  if (authorMode.value === 'autre') return customName.value.trim()
+  return ''
+})
+
 // Suggestion douce si les 3 dernières entrées sont toutes marquées "difficiles"
 const showSupportSuggestion = computed(() => {
   if (entries.value.length < 3) return false
   return entries.value.slice(0, 3).every((e) => e.score < 0.4)
 })
+
+const selectAuthorMode = (mode) => {
+  authorMode.value = mode
+  rememberAuthor()
+}
+
+const rememberAuthor = () => {
+  localStorage.setItem('littleStepsMoodAuthorMode', authorMode.value)
+  localStorage.setItem('littleStepsMoodAuthorCustom', customName.value.trim())
+}
 
 const selectEmoji = (emoji) => {
   selectedEmoji.value = emoji
@@ -157,6 +218,8 @@ const sentimentLabel = (score) => {
 const submitEntry = () => {
   if (!selectedEmoji.value) return
 
+  rememberAuthor()
+
   const score = computeScore(selectedEmoji.value, selectedTags.value)
 
   const entry = {
@@ -165,6 +228,7 @@ const submitEntry = () => {
     emoji: selectedEmoji.value,
     tags: [...selectedTags.value],
     note: note.value.trim(),
+    auteur: authorLabel.value,
     sentiment: sentimentLabel(score),
     score
   }
@@ -248,6 +312,55 @@ const formatDate = (dateStr) => {
   padding: 24px;
   margin-bottom: 24px;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
+.author-field {
+  margin-bottom: 20px;
+}
+
+.author-field label {
+  display: block;
+  font-weight: 600;
+  color: #5C4033;
+  margin-bottom: 8px;
+}
+
+.author-options {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.author-option {
+  padding: 8px 16px;
+  background: white;
+  border: 2px solid #E5D9C8;
+  border-radius: 30px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.author-option.active {
+  background: #F4A46C;
+  color: white;
+  border-color: #F4A46C;
+}
+
+.author-custom-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 2px solid #E5D9C8;
+  border-radius: 12px;
+  font-size: 1rem;
+  margin-top: 10px;
+}
+
+.author-hint {
+  font-size: 0.75rem;
+  color: #999;
+  margin: 6px 0 0;
 }
 
 .emoji-selector {
@@ -394,6 +507,11 @@ h3 {
   color: #8C6F5E;
   font-size: 0.85rem;
   flex: 1;
+}
+
+.entry-author {
+  font-weight: 600;
+  color: #F4A46C;
 }
 
 .btn-delete {
