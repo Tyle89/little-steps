@@ -1,0 +1,402 @@
+<!--
+  Development milestones checklist, grouped by age bracket and category.
+  Items go through a two-step "check, then validate" flow rather than
+  saving on every click - see the script section for why.
+-->
+<template>
+  <div class="checklist-page">
+    <div class="content">
+      <h1 class="title">Jalons de développement</h1>
+      <p class="subtitle">
+        Une checklist indicative par tranche d'âge — chaque enfant avance à son rythme,
+        ce n'est pas une course. 🌱
+      </p>
+
+      <div
+        v-for="bracket in developmentChecklist"
+        :key="bracket.id"
+        class="bracket-card"
+        :class="{ current: bracket.id === currentBracketId }"
+      >
+        <button class="bracket-header" @click="toggleBracket(bracket.id)">
+          <div class="bracket-header-left">
+            <span class="bracket-label">{{ bracket.label }}</span>
+            <span v-if="bracket.id === currentBracketId" class="current-badge">
+              Tranche actuelle
+            </span>
+          </div>
+          <div class="bracket-header-right">
+            <span class="progress-text">{{ progressFor(bracket).done }}/{{ progressFor(bracket).total }}</span>
+            <span class="chevron" :class="{ open: openBrackets.includes(bracket.id) }">▾</span>
+          </div>
+        </button>
+
+        <div class="progress-bar-track">
+          <div
+            class="progress-bar-fill"
+            :style="{ width: progressFor(bracket).percent + '%' }"
+          ></div>
+        </div>
+
+        <div v-if="openBrackets.includes(bracket.id)" class="bracket-body">
+          <div
+            v-for="(catLabel, catKey) in categoryLabels"
+            :key="catKey"
+            class="category-block"
+          >
+            <h4>{{ catLabel }}</h4>
+            <ul class="item-list">
+              <li
+                v-for="(item, index) in bracket.categories[catKey]"
+                :key="index"
+                class="item"
+                @click="toggleItem(bracket.id, catKey, index)"
+              >
+                <span
+                  class="checkbox"
+                  :class="{
+                    validated: isValidated(bracket.id, catKey, index),
+                    pending: isPending(bracket.id, catKey, index)
+                  }"
+                >
+                  <span v-if="isValidated(bracket.id, catKey, index)">🔒</span>
+                  <span v-else-if="isPending(bracket.id, catKey, index)">✓</span>
+                </span>
+                <span
+                  class="item-text"
+                  :class="{ validated: isValidated(bracket.id, catKey, index) }"
+                >
+                  {{ item }}
+                </span>
+              </li>
+            </ul>
+          </div>
+
+          <button
+            class="btn-validate"
+            :disabled="!hasPendingChanges(bracket)"
+            @click="validateBracket(bracket)"
+          >
+            ✅ Valider cette tranche
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useChildStore } from '@/stores/child'
+import { developmentChecklist } from '@/data/developmentChecklist'
+
+const childStore = useChildStore()
+const { dateNaissance, checklist } = storeToRefs(childStore)
+
+const categoryLabels = {
+  motricite: '🏃 Motricité',
+  langage: '💬 Langage',
+  physique: '✋ Physique & autonomie',
+  social: '❤️ Social & émotionnel'
+}
+
+// Auto-detects which age bracket the child currently falls into, based
+// on their date of birth, so that bracket can be highlighted and opened
+// by default.
+const currentBracketId = computed(() => {
+  if (!dateNaissance.value) return null
+
+  const ageDays = Math.floor(
+    (new Date() - new Date(dateNaissance.value)) / (1000 * 60 * 60 * 24)
+  )
+
+  const match = developmentChecklist.find(
+    (b) => ageDays >= b.minDays && ageDays < b.maxDays
+  )
+
+  return match?.id ?? null
+})
+
+const openBrackets = ref(currentBracketId.value ? [currentBracketId.value] : [])
+
+const toggleBracket = (id) => {
+  if (openBrackets.value.includes(id)) {
+    openBrackets.value = openBrackets.value.filter((b) => b !== id)
+  } else {
+    openBrackets.value.push(id)
+  }
+}
+
+// Local, not-yet-saved selections. Checking a box only updates this
+// object; nothing is written to Firestore until "Valider cette tranche"
+// is pressed (see validateBracket below).
+const pending = ref({})
+
+const isValidated = (bracketId, category, index) => {
+  return !!checklist.value?.[bracketId]?.[category]?.[index]
+}
+
+const isPending = (bracketId, category, index) => {
+  return !!pending.value?.[bracketId]?.[category]?.[index]
+}
+
+// Clicking an item behaves differently depending on its current state:
+// - Already validated (locked): asks for confirmation before allowing it
+//   to be un-checked, so a milestone the child has genuinely reached
+//   can't be lost with a single accidental tap.
+// - Not yet validated: just toggles the local "pending" selection - no
+//   Firestore write happens here at all.
+const toggleItem = (bracketId, category, index) => {
+  if (isValidated(bracketId, category, index)) {
+    const confirmed = confirm(
+      "Cette étape est déjà validée. Veux-tu vraiment annuler cette validation ?"
+    )
+    if (confirmed) {
+      childStore.toggleChecklistItem(bracketId, category, index)
+    }
+    return
+  }
+
+  if (!pending.value[bracketId]) pending.value[bracketId] = {}
+  if (!pending.value[bracketId][category]) pending.value[bracketId][category] = {}
+
+  pending.value[bracketId][category][index] = !pending.value[bracketId][category][index]
+}
+
+const hasPendingChanges = (bracket) => {
+  const p = pending.value[bracket.id]
+  if (!p) return false
+  return Object.values(p).some((catObj) => Object.values(catObj || {}).some((v) => v === true))
+}
+
+// Commits every pending selection for one age bracket in a single
+// Firestore write. Deliberately does NOT call childStore.toggleChecklistItem()
+// per item - doing that in a loop would fire several concurrent writes to
+// the same document with no guaranteed ordering, and the last one to
+// *arrive* (not necessarily the last one sent) silently wins, discarding
+// the others. Instead, every change is applied to local state first via
+// setChecklistItemLocal(), then persisted once at the end.
+const validateBracket = async (bracket) => {
+  const p = pending.value[bracket.id]
+  if (!p) return
+
+  Object.keys(p).forEach((category) => {
+   Object.keys(p[category]).forEach((indexStr) => {
+    const index = Number(indexStr)
+     if (p[category][indexStr] === true && !isValidated(bracket.id, category, index)) {
+       childStore.setChecklistItemLocal(bracket.id, category, index, true)
+     }
+   })
+  })
+
+  await childStore.saveToFirestore()
+  pending.value[bracket.id] = {}
+}
+
+// Progress counts only VALIDATED items (from the store), never pending
+// (unsaved) ones - so the "3/12" counter and progress bar can't give a
+// false sense of completion before a validation is actually confirmed.
+const progressFor = (bracket) => {
+  const allItems = Object.values(bracket.categories).flat()
+  const total = allItems.length
+
+  let done = 0
+  Object.keys(bracket.categories).forEach((cat) => {
+    bracket.categories[cat].forEach((_, index) => {
+      if (isValidated(bracket.id, cat, index)) done++
+    })
+  })
+
+  return { done, total, percent: total ? Math.round((done / total) * 100) : 0 }
+}
+</script>
+
+<style scoped>
+.checklist-page {
+  min-height: 100vh;
+  background-color: #FFF8E8;
+  padding: 20px;
+}
+
+.content {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.title {
+  text-align: center;
+  color: #5C4033;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  text-align: center;
+  color: #8C6F5E;
+  font-size: 0.95rem;
+  margin-bottom: 28px;
+}
+
+.bracket-card {
+  background: white;
+  border-radius: 20px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  border: 2px solid transparent;
+}
+
+.bracket-card.current {
+  border-color: #9ED8B6;
+}
+
+.bracket-header {
+  width: 100%;
+  background: none;
+  border: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.bracket-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bracket-label {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #5C4033;
+}
+
+.current-badge {
+  background: #9ED8B6;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.bracket-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.progress-text {
+  color: #8C6F5E;
+  font-size: 0.9rem;
+}
+
+.chevron {
+  transition: transform 0.2s;
+  color: #8C6F5E;
+}
+
+.chevron.open {
+  transform: rotate(180deg);
+}
+
+.progress-bar-track {
+  width: 100%;
+  height: 6px;
+  background: #F0E8D8;
+  border-radius: 10px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: #9ED8B6;
+  transition: width 0.3s ease;
+}
+
+.bracket-body {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.category-block h4 {
+  margin: 0 0 10px;
+  color: #5C4033;
+  font-size: 0.95rem;
+}
+
+.item-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.checkbox {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  border: 2px solid #E5D9C8;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  color: white;
+  margin-top: 2px;
+}
+
+.checkbox.pending {
+  background: #F4A46C;
+  border-color: #F4A46C;
+}
+
+.checkbox.validated {
+  background: #9ED8B6;
+  border-color: #9ED8B6;
+  font-size: 0.85rem;
+}
+
+.item-text {
+  color: #5C4033;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.item-text.validated {
+  color: #aaa;
+  text-decoration: line-through;
+}
+
+.btn-validate {
+  width: 100%;
+  padding: 14px;
+  background: #9ED8B6;
+  color: white;
+  border: none;
+  border-radius: 30px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 6px;
+}
+
+.btn-validate:disabled {
+  background: #e5e5e5;
+  color: #999;
+  cursor: not-allowed;
+}
+</style>
